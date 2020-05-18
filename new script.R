@@ -74,7 +74,55 @@ colldeg_p <- train_set %>%
   
   # Plot all graph together
   
-
+# גרפים לא אחידים לסדר
   grid.arrange(colldeg_p, hisp_p, black_p, sex_p)
 
     
+# The model
+  set.seed(1994)
+  data_split<- initial_split(train_set, prop = 0.7)
+  train_set1 <- training(data_split)
+  test_set1 <- testing(data_split)
+  
+# Fit a model
+
+  x_train <- train_set1[, c(3:39)] %>%
+    data.matrix()
+    y_train <- train_set1$lnwage
+    
+    x_test <- test_set1[, c(3:39)] %>%
+      data.matrix()
+    y_test <- test_set1$lnwage  
+    
+  
+  fit_Lasso <- glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+  fit_Lasso %>% 
+    plot(xvar = "lambda")
+  
+  # Picking the best Lambda
+  
+  cv_fit <- cv.glmnet(x_train, y_train, alpha = 1)
+  cv_fit %>%
+    plot()
+  
+  # pick Lambdas
+  pred_cv_min <- as.vector(predict(cv_fit, s = "lambda.min", newx = x_test, type = "link"))
+  pred_cv_1se <- as.vector(predict(cv_fit, s = "lambda.1se", newx = x_test, type = "link"))
+  
+  
+  comp_models <- data.frame("Min Lambda" = pred_cv_min, pred_cv_1se)
+ 
+   comp_models %>%
+    rename("Min Lambda" = X1, "1.se Lambda" = X1.1) %>%
+    tidy()
+
+
+   multi_metric <- metric_set(rmse, rsq, mae)
+   multi_metric(data = test_set1, truth = y_test, estimate = pred_cv_1se) %>%
+     tibble() %>%
+     mutate(.metric = c("RMSE", "R-Squared", "MAE"))
+   
+
+  
+  
+  
