@@ -1,12 +1,13 @@
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(DataExplorer,readr,plyr,gridExtra, glmnet, tidymodels,kableExtra, stargazer,ROCit, caret)
+pacman::p_load(DataExplorer,here, readr,plyr,gridExtra, glmnet, tidymodels,kableExtra, stargazer,ROCit, caret)
 
 #Load train and test data
 urlfile1= "https://raw.githubusercontent.com/elior631/Kaggle-competition-No.1/master/train.csv"
 urlfile2= "https://raw.githubusercontent.com/elior631/Kaggle-competition-No.1/master/test.csv"
 
 train_set<- read_csv(url(urlfile1))
-test_set<- read_csv(url(urlfile2))
+test_set<- read_csv(url(urlfile2)) %>%
+  data.matrix()
 
 
 # Define as factors all binary features
@@ -94,6 +95,8 @@ colldeg_p <- train_set %>%
       data.matrix()
     y_test <- test_set1$lnwage  
     
+    test_set_noID <- data.matrix(test_set[, c(2:38)])
+
   
   fit_Lasso <- glmnet(x_train, y_train, alpha = 1, family = "gaussian")
   fit_Lasso %>% 
@@ -122,7 +125,16 @@ colldeg_p <- train_set %>%
      tibble() %>%
      mutate(.metric = c("RMSE", "R-Squared", "MAE"))
    
+   
+   pred_cv_1se <- as.vector(predict(cv_fit, s = "lambda.1se",
+                                    newx = test_set_noID, type = "link"))
 
+   results <- data.frame(test_set[,1], pred_cv_1se)  
   
-  
-  
+   write.csv(
+     results,
+     file = here("E_Lior1.csv"),
+     row.names = FALSE
+   )
+   
+   
