@@ -20,7 +20,7 @@ train_set %>%
   ggplot(aes(x = edyrs, y = lnwage, color = female)) + 
   scale_color_discrete(name = "Sex") +
   xlab('Years of education')+
-  ylab('Salary log')+
+  ylab('Log of wage')+
   geom_point()
 
 log_sex_mean <- ddply(train_set, "female", summarise, grp.mean=mean(lnwage))
@@ -28,9 +28,10 @@ log_sex_mean <- ddply(train_set, "female", summarise, grp.mean=mean(lnwage))
 train_set %>%
   ggplot(aes(x = lnwage, fill = female)) +
   geom_density(alpha = 0.4) +
-  geom_vline(data = log_sex_mean, aes(xintercept=grp.mean, color=female),
-              linetype="twodash")+
-  xlab("Log of wage")
+  geom_vline(data = log_sex_mean, aes(xintercept = grp.mean),
+              linetype="twodash") +
+  xlab("Log of wage") +
+  scale_fill_brewer(palette="Dark2")
 
 
 
