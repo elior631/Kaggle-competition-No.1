@@ -98,25 +98,24 @@ colldeg_p <- train_set %>%
     test_set_noID <- data.matrix(test_set[, c(2:38)])
 
   
-  fit_Lasso <- glmnet(x_train, y_train, alpha = 1, family = "gaussian")
+  fit_Lasso <- glmnet(x_train, y_train, alpha = 0.5)
   fit_Lasso %>% 
     plot(xvar = "lambda")
   
   # Picking the best Lambda
   
-  cv_fit <- cv.glmnet(x_train, y_train, alpha = 1)
+  cv_fit <- cv.glmnet(x_train, y_train, alpha = 0.5)
   cv_fit %>%
     plot()
   
   # pick Lambdas
-  pred_cv_min <- as.vector(predict(cv_fit, s = "lambda.min", newx = x_test, type = "link"))
-  pred_cv_1se <- as.vector(predict(cv_fit, s = "lambda.1se", newx = x_test, type = "link"))
+  pred_cv_min <- as.vector(predict(cv_fit, s = "lambda.min", newx = x_test))
+  pred_cv_1se <- as.vector(predict(cv_fit, s = "lambda.1se", newx = x_test))
   
   
   comp_models <- data.frame("Min Lambda" = pred_cv_min, pred_cv_1se)
  
    comp_models %>%
-    rename("Min Lambda" = X1, "1.se Lambda" = X1.1) %>%
     tidy()
 
 
@@ -127,13 +126,13 @@ colldeg_p <- train_set %>%
    
    
    pred_cv_1se <- as.vector(predict(cv_fit, s = "lambda.1se",
-                                    newx = test_set_noID, type = "link"))
+                                    newx = test_set_noID))
 
-   results <- data.frame(test_set[,1], pred_cv_1se)  
+   results <- data.frame(test_set[,1], pred_cv_1se)
   
    write.csv(
-     results,
-     file = here("E_Lior1.csv"),
+     results ,
+    file = ("E_Lior2.csv"),
      row.names = FALSE
    )
    
