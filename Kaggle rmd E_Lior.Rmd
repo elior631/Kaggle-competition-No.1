@@ -1,31 +1,46 @@
+---
+title: "Kaggle competition E_Lior"
+author: "Elior Bliah"
+date: "5/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this file we will predict the log of wages using some machine learning algorithms. First we will explore the data and present data visualization. Second, we will show walk through the models we have used. Afterwards, we will compare the different models based on predictive power. Finally, we will predict using the model we found is best for our purposes.
+
+
+# Loading the packages and data sets
+```{r loading the data, message=FALSE, warning=FALSE, include=FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(DataExplorer,here, readr,plyr,gridExtra, glmnet, tidymodels,kableExtra, stargazer,ROCit, caret)
 
-#Load train and test data
+
 urlfile1= "https://raw.githubusercontent.com/elior631/Kaggle-competition-No.1/master/train.csv"
 urlfile2= "https://raw.githubusercontent.com/elior631/Kaggle-competition-No.1/master/test.csv"
 
 train_set<- read_csv(url(urlfile1))
 test_set<- read_csv(url(urlfile2))
 
-# Define as factors all binary features
+
 vec <- c(3, 8:39)
 train_set_viz <- train_set
 train_set_viz[vec]<- lapply(train_set_viz[vec], factor)
+```
 
-#########################################################
-#visualization of the data
 
-# DataExplorer::create_report(train_set)
+```{r # Define as factors all binary features}
+vec <- c(3, 8:39)
+train_set_viz <- train_set
+train_set_viz[vec]<- lapply(train_set_viz[vec], factor)
+```
 
-train_set_viz %>% 
-  ggplot(aes(x = edyrs, y = lnwage, color = female)) + 
-  scale_color_discrete(name = "Sex") +
-  xlab('Years of education')+
-  ylab('Log o()f wage')+
-  geom_point()
+In these histograms, we can see how the distribution of log of wage changes as we divide the data. First, we can see that the distribution of the log of wages of the subset of college graduates is more skewed to the right compared to the complementing subset. We observe similar patterns in the divisions to white and black (white earn more, on average) and males and females (males earn more, on average). This meets our expectations, as we know that education is positively correlated with wage, and there is a wage gap between white and black people, and the gender gap is still substantial. However, when we look at the division to Hispanic and non-Hispanic, the difference in mean log of wages, and in the distribution, does not seem significant
 
-# lnwage distribution by sex
+
+```{r density plots, message=FALSE, warning=FALSE}
 log_sex_mean <- ddply(train_set_viz, "female", summarise, grp.mean=mean(lnwage))
 
 sex_p <- train_set_viz %>%
@@ -73,14 +88,12 @@ colldeg_p <- train_set_viz %>%
 
   grid.arrange(colldeg_p, hisp_p, black_p, sex_p)
 
-  
-  
-#########################################################
-
-  #The model
+```
 
 
-  train_set<- train_set %>%
+
+```{r creating interactions}
+ train_set<- train_set %>%
     mutate(fem_edu = female*edyrs, fem_col = female*colldeg,
            fem_bl = female*black, bl_edu =black*edyrs, bl_col = black*colldeg,
            edu2 = edyrs*edyrs) 
@@ -90,15 +103,17 @@ test_set<- test_set %>%
   mutate(fem_edu = female*edyrs, fem_col = female*colldeg,
          fem_bl = female*black, bl_edu =black*edyrs, bl_col = black*colldeg,
          edu2 = edyrs*edyrs) 
-  
-  set.seed(1994)
+```
+
+```{r spliting the data}
+set.seed(1994)
   data_split<- initial_split(train_set, prop = 0.7)
   train_set1 <- training(data_split)
   test_set1 <- testing(data_split)
-  
-# Fit a model
+```
 
-  x_train <- train_set1[, c(3:45)] %>%
+```{r defining variables}
+ x_train <- train_set1[, c(3:45)] %>%
     data.matrix()
     y_train <- train_set1$lnwage
     
@@ -107,20 +122,22 @@ test_set<- test_set %>%
     y_test <- test_set1$lnwage  
     
     test_set_noID <- data.matrix(test_set[, c(2:44)])
-    
-    
-  fit_Lasso <- glmnet(x_train, y_train, alpha = 0)
+```
+
+# Lasso regularization; Cross validation
+```{r fit lasso}
+fit_Lasso <- glmnet(x_train, y_train, alpha = 0)
   fit_Lasso %>% 
     plot(xvar = "lambda")
-  
-  # Picking the best Lambda
   
   cv_fit <- cv.glmnet(x_train, y_train, alpha = 0)
   cv_fit %>%
     plot()
-  
-  # pick Lambdas
-  pred_cv_min <- as.vector(predict(cv_fit, s = "lambda.min", newx = x_test))
+```
+
+## picking lambda
+```{r picking lambda, message=FALSE, warning=FALSE}
+ pred_cv_min <- as.vector(predict(cv_fit, s = "lambda.min", newx = x_test))
   pred_cv_1se <- as.vector(predict(cv_fit, s = "lambda.1se", newx = x_test))
   
   
@@ -128,26 +145,77 @@ test_set<- test_set %>%
  
    comp_models %>%
     tidy()
+```
 
 
-   multi_metric <- metric_set(rmse, rsq, mae)
+```{r RMSE table}
+ multi_metric <- metric_set(rmse, rsq, mae)
    multi_metric(data = test_set1, truth = y_test, estimate = pred_cv_min) %>%
      tibble() %>%
      mutate(.metric = c("RMSE", "R-Squared", "MAE"))
-   
-   
-   pred_cv_1se_test <- as.vector(predict(cv_fit, s = "lambda.1se",
+```
+
+```{r running the model on the test set}
+ pred_cv_1se_test <- as.vector(predict(cv_fit, s = "lambda.1se",
                                     newx = test_set_noID))
 
    results <- data.frame(test_set[,1], pred_cv_1se_test) %>%
      rename( "lnwage" = pred_cv_1se_test )
      
-  
+```
+
+```{r saving  eval=FALSE, include=FALSE}
    write.csv(
      results ,
     file = ("E_Lior4.csv"),
      row.names = FALSE
    )
-   
-   
-   
+```
+
+# Random Forest
+```{r Random Forest}
+formula_full <- lnwage ~ . -ID
+
+fitControl <- trainControl(method = "repeatedcv",
+                           number = 5,
+                           repeats = 3)
+rf <- train(formula_full,
+            data = train_set1,
+            method = "rf",
+            trControl = fitControl)
+
+models_pred <- data.frame(
+  rf = predict(rf, newdata = test_set1),
+  truth = test_set1$lnwage)
+
+rmse(models_pred, truth, rf)
+
+pred<- predict(rf, newdata = test_set) 
+  
+to_print <- data.frame( test_set$ID, pred) %>%
+  rename( "lnwage" = pred )
+```
+
+# K nearest Neighbor
+```{r K nearest Neighbor}
+fitControl <- trainControl(method = "repeatedcv",
+                           number = 5,
+                           repeats = 3)
+knn <- train(formula_full,
+            data = train_set1,
+            method = "knn",
+            trControl = fitControl)
+
+models_pred <- data.frame(
+  knn = predict(knn, newdata = test_set1),
+  truth = test_set1$lnwage)
+
+rmse(models_pred, truth, knn)
+
+pred<- predict(knn, newdata = test_set) 
+
+to_print <- data.frame( test_set$ID, pred) %>%
+  rename( "lnwage" = pred )
+
+```
+
