@@ -18,7 +18,31 @@ train_set_viz[vec]<- lapply(train_set_viz[vec], factor)
 
 # DataExplorer::create_report(train_set)
 
-train_set_viz %>% 
+correl <- train_set %>%
+  as.data.frame() %>%
+  cor()
+
+correl[lower.tri(correl,diag=TRUE)]=NA # put NA
+correl<-as.data.frame(as.table(correl)) # as a dataframe
+correl<-na.omit(correl) # remove NA
+correl<-correl[with(correl, order(-Freq)), ]
+correl<- correl[correl$Var1 == "lnwage",]
+
+correl<- correl[correl$Freq >= 0.15 | correl$Freq <= -0.15 ,]
+
+correl %>%
+  ggplot(aes(x=Var2 , y= Freq)) +
+  geom_col(aes( fill = Freq)) +
+   xlab('Variables') +
+ ylab('') +
+  ggtitle("Correlation with lnwage") +
+  labs(fill = "Correlation") +
+  theme(legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5))
+
+
+
+  train_set_viz %>% 
   ggplot(aes(x = edyrs, y = lnwage, color = female)) + 
   scale_color_discrete(name = "Sex") +
   xlab('Years of education')+
