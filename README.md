@@ -1,7 +1,9 @@
  Wage gap predictions models (ML)
 ================
 Machine Learning course for master’s degree, Hebrew U.
+
 :spiral_calendar: Spring semester, 2020
+
 -----
 
 In this project we predicted the wage of an individual with several features such as gender, ethnic group, geographic residency,
